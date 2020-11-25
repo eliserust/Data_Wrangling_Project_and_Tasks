@@ -14,7 +14,7 @@ library(tidyverse)
 library(lubridate)
 library(pastecs)
 
-myconnection <- odbcConnect("dartmouth_qbs181", uid = "erust", pwd = "erust@qbs181")
+myconnection <- odbcConnect("dartmouth_qbs181", uid = "****", pwd = "**********")
 
 #1) Create a new column "Enrollment group" in the table Phonecall
 
