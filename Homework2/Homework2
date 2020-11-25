@@ -1,0 +1,120 @@
+## Elise Rust
+## QBS 181
+## Homework #2
+## October 2020
+rm(list = ls())
+
+install.packages("odbc")
+install.packages("RODBC")
+install.packages("sqldf")
+install.packages("pastecs")
+library(RODBC)
+library(sqldf)
+library(tidyverse)
+library(lubridate)
+library(pastecs)
+
+myconnection <- odbcConnect("dartmouth_qbs181", uid = "erust", pwd = "erust@qbs181")
+
+#1) Create a new column "Enrollment group" in the table Phonecall
+
+phonecall <- sqlQuery(myconnection, "SELECT * FROM [qbs181].[dbo].PhoneCall_Encounter")
+
+phonecall <- phonecall %>%
+  mutate(EnrollmentGroup = case_when(
+    EncounterCode == 125060000 ~ "Clinical Alert",
+    EncounterCode == 125060001 ~ "Health Coaching",
+    EncounterCode == 125060002 ~ "Technical Question",
+    EncounterCode == 125060003 ~ "Administrative",
+    EncounterCode == 125060004 ~ "Other",
+    EncounterCode == 125060005 ~ "Lack of engagement",
+    TRUE ~ "else"
+  ))
+
+#2) Obtain the number of records for each group
+length(phonecall$EnrollmentGroup[phonecall$EnrollmentGroup == "Clinical Alert"])
+length(phonecall$EnrollmentGroup[phonecall$EnrollmentGroup == "Health Coaching"])
+length(phonecall$EnrollmentGroup[phonecall$EnrollmentGroup == "Technical Question"])
+length(phonecall$EnrollmentGroup[phonecall$EnrollmentGroup == "Administrative"])
+length(phonecall$EnrollmentGroup[phonecall$EnrollmentGroup == "Other"])
+length(phonecall$EnrollmentGroup[phonecall$EnrollmentGroup == "Lack of engagement"])
+
+#3) Merge the phone call encounter table with call duration table
+Phonecall_CallDuration <- sqlQuery(myconnection, "select A.*, B.* from [qbs181].[dbo].PhoneCall_Encounter A
+                                inner join [qbs181].[dbo].CallDuration B
+                                on A.Customerid = B.tri_CustomerIDEntityReference")
+
+#4a) Clean up the Phonecall_CallDuration table
+# Call outcomes --> 1- No response, 2-Left voice mail, 3-successful
+# Call types --> 1- inbound, 2- outbound
+
+Phonecall_CallDuration <- Phonecall_CallDuration %>%
+  mutate(Outcome = case_when(
+    CallOutcome == 1 ~ "No response",
+    CallOutcome == 2 ~ "Left Voicemail",
+    CallOutcome == 3 ~ "Successful",
+    TRUE ~ "Other"
+  )) %>%
+  mutate(Type2 = case_when(
+    CallType == 1 ~ "Inbound",
+    CallType == 2 ~ "Outbound",
+    TRUE ~ "Other"
+  )) %>%
+  mutate(EnrollmentGroup = case_when(
+    EncounterCode == 125060000 ~ "Clinical Alert",
+    EncounterCode == 125060001 ~ "Health Coaching",
+    EncounterCode == 125060002 ~ "Technical Question",
+    EncounterCode == 125060003 ~ "Administrative",
+    EncounterCode == 125060004 ~ "Other",
+    EncounterCode == 125060005 ~ "Lack of engagement",
+    TRUE ~ "else"
+  ))
+
+## b. find out the # of records for different call outcomes and call type
+length(Phonecall_CallDuration$Outcome[Phonecall_CallDuration$Outcome == "No response"])
+length(Phonecall_CallDuration$Outcome[Phonecall_CallDuration$Outcome == "Left Voicemail"])
+length(Phonecall_CallDuration$Outcome[Phonecall_CallDuration$Outcome == "Successful"])
+length(Phonecall_CallDuration$Type2[Phonecall_CallDuration$Type2 == "Inbound"])
+length(Phonecall_CallDuration$Type2[Phonecall_CallDuration$Type2 == "Outbound"])
+
+## c. Find call duration for each of the enrollment groups
+Phonecall_CallDuration %>% 
+  group_by(EnrollmentGroup) %>% 
+  summarise(CallDuration = sum(CallDuration))
+
+## 5) Merge the tables Demographics, Conditions, TextMessages and find # of texts/week, by type of sender
+Demo <- sqlQuery(myconnection, "select A.*, B.*, C.* from [qbs181].[dbo].Demographics A
+                                inner join [qbs181].[dbo].Conditions B
+                                on A.contactid = B.tri_patientid
+                                inner join [qbs181].[dbo].Text C
+                                on A.contactid = C.tri_contactid")
+
+# create a new column "Week of the year" using date provided in TextSentDate
+Demo <- Demo %>%
+  mutate(WeekOfYear = lubridate::week(ymd(TextSentDate))
+  )
+
+min(Demo$TextSentDate) # 2016-02-07
+max(Demo$TextSentDate) # 2017-02-03
+
+# Count total number of texts per group
+Demo %>% 
+  group_by(SenderName) %>% 
+  summarise(WeekOfYear = sum(WeekOfYear))
+
+## average number of texts per week per group
+Demo %>% 
+  group_by(SenderName) %>% 
+  summarise(WeekOfYear = mean(WeekOfYear))
+
+## Alternative solution. Couldn't debug but I would happily take comments on it
+# Demo1 <- Demo %>% 
+#   filter(contactid, SenderName, TextSentDate, WeekOfYear) %>%
+#   gather(Demo, "TextsPerWeek", "WeekOfYear",)
+  
+
+
+## 6) Obtain the number of texts based on the chronic condition over a period of time
+Demo %>% 
+  group_by(tri_name) %>% 
+  summarise(WeekOfYear = sum(WeekOfYear))
