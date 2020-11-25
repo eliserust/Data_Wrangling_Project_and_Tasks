@@ -1,0 +1,102 @@
+-- Elise Rust
+-- Homework #1
+-- QBS 181
+-- October 2020
+
+-- Using the pre-loaded dataframe "Demographics" provided by Professor Yapalparvi for this assignment
+-- SQL
+
+SELECT * INTO erust.Demo FROM dbo.Demographics
+
+-- Question #1: Rename all columns of Demographics
+EXEC sp_RENAME 'erust.Demo.tri_age' , 'Age', 'COLUMN'
+EXEC sp_RENAME 'erust.Demo.gendercode' , 'Gender', 'COLUMN'
+EXEC sp_RENAME 'erust.Demo.contactid' , 'ID', 'COLUMN'
+EXEC sp_RENAME 'erust.Demo.address1_stateorprovince' , 'State', 'COLUMN'
+EXEC sp_RENAME 'erust.Demo.tri_imaginecareenrollmentemailsentdate' , 'EmailSentDate', 'COLUMN'
+EXEC sp_RENAME 'erust.Demo.tri_enrollmentcompletedate' , 'Completedate', 'COLUMN'
+EXEC sp_RENAME 'erust.Demo.parentcustomeridname' , 'CustomerIDName', 'COLUMN'
+EXEC sp_RENAME 'erust.Demo.tri_imaginecareenrollmentstatus' , 'EnrollmentStatus', 'COLUMN'
+
+-- Question 1a: Calculate the time (in days) to complete enrollment adn create a new column to have this data
+ALTER TABLE erust.Demo
+ADD TimeToComplete int
+
+UPDATE erust.Demo
+SET TimeToComplete = DATEDIFF(DAY, try_convert(date, EmailSentDate),  try_convert(date, Completedate))
+
+-- Question #2: Create a new column "Enrollment Status"
+ALTER TABLE erust.Demo
+ADD EnrollmentStatus nvarchar(50)
+
+UPDATE erust.Demo
+SET EnrollmentStatus = 'Complete'
+WHERE EnrollmentCode = 167410011
+
+UPDATE erust.Demo
+SET EnrollmentStatus = 'Email sent'
+WHERE EnrollmentCode = 167410001
+
+UPDATE erust.Demo
+SET EnrollmentStatus = 'Non responder'
+WHERE EnrollmentCode = 167410004
+
+UPDATE erust.Demo
+SET EnrollmentStatus = 'Facilitated Enrollment'
+WHERE EnrollmentCode = 167410005
+
+UPDATE erust.Demo
+SET EnrollmentStatus = 'Incomplete Enrollments'
+WHERE EnrollmentCode = 167410002
+
+UPDATE erust.Demo
+SET EnrollmentStatus = 'Opted Out'
+WHERE EnrollmentCode = 167410003
+
+UPDATE erust.Demo
+SET EnrollmentStatus = 'Unprocessed'
+WHERE EnrollmentCode = 167410000
+
+UPDATE erust.Demo
+SET EnrollmentStatus = 'Second email sent'
+WHERE EnrollmentCode = 167410006
+
+-- Question #3: Create a new column "Gender"
+ALTER TABLE erust.Demo
+ADD Gender_Title varchar(10)
+
+UPDATE erust.Demo
+SET Gender_Title = 'female'
+WHERE Gender = '2'
+
+UPDATE erust.Demo
+SET Gender_Title = 'male'
+WHERE Gender = '1'
+
+UPDATE erust.Demo
+SET Gender_Title = 'other'
+WHERE Gender = '167410000'
+
+UPDATE erust.Demo
+SET Gender_Title = 'unknown'
+WHERE Gender = 'NULL'
+
+-- Question #4: Create a new column "Age group" and create age groups with an interval of 25 years
+ALTER TABLE erust.Demo
+ADD AgeGroup nvarchar(10)
+
+UPDATE erust.Demo
+SET AgeGroup = '0-25'
+WHERE Age BETWEEN 0 and 25
+
+UPDATE erust.Demo
+SET AgeGroup = '26-50'
+WHERE Age BETWEEN 26 and 50
+
+UPDATE erust.Demo
+SET AgeGroup = '51-75'
+WHERE Age BETWEEN 51 and 75
+
+UPDATE erust.Demo
+SET AgeGroup = '76-100'
+WHERE Age BETWEEN 76 and 100
