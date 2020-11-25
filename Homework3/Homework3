@@ -1,0 +1,139 @@
+## Homework #3
+## Elise Rust
+## November 2020
+
+library(tidyr)
+library(dplyr)
+library(devtools)
+
+#1) Compute the rate for table2, and table 4a+table4b and perform the four operations:
+View(table2)
+View(table4a)
+View(table4b)
+
+table2 <- table2 %>%
+  spread(type, count)
+  
+table2 %>%
+  group_by(country) %>%
+  mutate(case_rate = (cases - lag(cases))/lag(cases),
+         pop_rate = (population - lag(population))/lag(population))
+
+table4 <- cbind(table4a, table4b)
+
+colnames(table4) <- c("country", "cases_1999", "cases_2000", "c1", "pop_1999", "pop_2000")
+table4$c1 <- NULL
+
+table4 <- table4 %>%
+  gather("cases_1999", "cases_2000", key = Year, value = Cases) %>%
+  gather("pop_1999", "pop_2000", key = Year1, value = Population)
+
+table4 <-table4[!(table4$Year=="cases_1999" & table4$Year1=="pop_2000"),]
+table4 <-table4[!(table4$Year=="cases_2000" & table4$Year1=="pop_1999"),]
+
+table4$Year <- gsub("cases_2000", 2000, table4$Year, fixed=TRUE)
+table4$Year <- gsub("cases_1999", 1999, table4$Year, fixed=TRUE)
+table4$Year1 <- NULL
+
+
+table4 <- table4 %>%
+  group_by(country) %>%
+  mutate(case_rate = (Cases - lag(Cases))/lag(Cases),
+         pop_rate = (Population - lag(Population))/lag(Population))
+
+
+#a) Extract the number of TB cases per country per year
+table2_cases <- filter(table2, type == "cases") %>%
+  rename(cases = count) %>%
+  arrange(country, year)
+
+#b) Extract the matching population per country per year
+table2_population <- filter(table2, type == "population") %>%
+  rename(population = count) %>%
+  arrange(country, year)
+
+#c) Divide cases by population, and multiply by 10,000
+table2_cases_per_cap <- tibble(
+  year = table2_cases$year,
+  country = table2_cases$country,
+  cases = table2_cases$cases,
+  population = table2_population$population
+) %>%
+  mutate(cases_per_cap = (cases / population) * 10000) %>%
+  select(country, year, cases_per_cap)
+
+#d) Store back in appropriate place
+t2_cases_per_cap <- t2_cases_per_cap %>%
+  mutate(type = "cases_per_cap") %>%
+  rename(count = cases_per_cap)
+
+bind_rows(table2, t2_cases_per_cap) %>%
+  arrange(country, year, type, count)
+
+#2) The following code fails because the column names are not in quotations. Thus, the gather() command can't subset columns that
+#   don't exist, and it doesn't recognize 1999 and 2000 as columns.
+
+table4a %>%
+  gather(1999,2000,key="year",value="cases")
+
+
+#3) Use the flights dataset in the nycflights13 library 
+library(nycflights13)
+library(lubridate)
+library(tidyverse)
+library(ggplot2)
+
+View(flights)
+
+#a) How does the distribution of flights times within a day change over the course of the year?
+# convert flight times to actual date time variables
+flights <- flights %>%
+  filter(!is.na(dep_time), !is.na(arr_time)) %>%
+  mutate(
+    departure_time = make_datetime(year, month, day, dep_time),
+    arrival_time = make_datetime(year, month, day, arr_time),
+    sched_dep_time = make_datetime(year, month, day, sched_dep_time),
+    sched_arr_time = make_datetime(year, month, day, sched_arr_time)
+  ) %>%
+  select(origin, dest, ends_with("delay"), ends_with("time"))
+
+#flights %>%
+#  mutate(time = hour(dep_time) * 100 + minute(dep_time),
+#         mon = as.factor(month(dep_time))) %>%
+#  ggplot(aes(x = time, y = ..density.., group = mon)) +
+#  geom_freqpoly(binwidth = 100)
+
+flights %>% 
+  ggplot(aes(dep_time)) + 
+  geom_freqpoly(binwidth = 86400) # 86400 seconds = 1 day
+
+#The distribution looks fairly uniform across the year
+
+#b) Compare dep_time, sched_dep_time, dep_delay. Are they consistent?
+#dep_delay should equal dep_time - sched_dep_time
+compare <- transmute(flights, dep_delay, delay1 = dep_time - sched_dep_time)
+
+# they are not consistent because of different units. dep_delay is in minutes, while dep_time and sched_dep_time are not in a time format
+transmute(flights,
+          dep_delay,
+          dep_time_minutes = (dep_time %% 100) + ((dep_time %/% 100) * 60),
+          sched_dep_time_minutes = (sched_dep_time %% 100) + ((sched_dep_time %/% 100) * 60),
+          time_delayed = dep_time_minutes - sched_dep_time_minutes
+)
+
+
+#c) Confirm the hypothesis that the early departures of flights in minutes 20-30 and 50-60 are caused by scheduled flights that leave early
+# this shows that the proportion of flights that are early departures is highest between minutes 20--30 and 50--60
+flights <- flights %>% 
+  mutate(early = dep_delay < 0) %>% 
+  group_by(minute) %>% 
+  ggplot() +
+  geom_bar(aes(x = minute, y = early), stat = "identity") +
+  xlim(0,60)
+
+flights <- flights %>% 
+  mutate(early = dep_delay < 0) %>% 
+  group_by(minute) %>% 
+  ggplot() +
+  geom_bar(aes(x = early, y = minute), stat = "identity") +
+  xlim(0,60)
