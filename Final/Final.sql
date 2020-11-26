@@ -4,6 +4,16 @@
 
 -- Datasets used are all provided by Professor Yapalparvi
 
+-- Supplement to Question #1:
+-- Convert "ObservedTime" column in IC_BP_v2.csv from int type to datetime
+SELECT * FROM erust.IC_BP_v2
+
+ALTER TABLE erust.IC_BP_v2
+ADD ObservedDate datetime
+UPDATE erust.IC_BP_v2
+SET ObservedDate = CONVERT(int, cast(ObservedTime as datetime), 120)
+
+
 -- Question :2 Merge the tables dbo.Demographics, dbo.Conditions, and dbo.TextMessages. Obtain the final dataset such that we have 1 row per ID by choosing the
 --            latest date when the text was sent
 
