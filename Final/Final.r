@@ -140,4 +140,4 @@ Dem_Conditions_Texts <- Dem_Conditions_Texts %>%
   group_by(contactid) %>%
   filter(TextSentDate==max(TextSentDate))
 
-sample_n(Dem_Conditions_Texts, 10)
+slice_sample(Dem_Conditions_Texts, n = 10)
